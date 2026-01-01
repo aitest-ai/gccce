@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 引導式擬題系統</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        /* =========================================
+           1. 全局設定 (Dark Mode + Neon Green)
+           ========================================= */
+        :root { 
+            --bg-color: #050505; 
+            --panel-bg: #101010; 
+            --accent: #00ff9d; 
+            --accent-dim: #005533; 
+            --danger: #ff3333; 
+            --text: #e0e0e0; 
+            --text-sub: #cccccc; 
+            --border: #333; 
+            --chat-width: 450px;
+        }
+
+        @font-face {
+            font-family: 'Iansui';
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+            src: url('https://cdn.jsdelivr.net/fontsource/fonts/iansui@latest/chinese-traditional-400-normal.woff2') format('woff2');
+        }
+
+        body { 
+            background: var(--bg-color); 
+            color: var(--text); 
+            font-family: 'Iansui', 'Microsoft JhengHei', sans-serif; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column;
+            height: 100vh; 
+            overflow: hidden; 
+        }
+
+        /* 滾動條美化 */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* =========================================
+           2. 元件樣式
+           ========================================= */
+        .navbar-custom {
+            background: var(--panel-bg);
+            border-bottom: 1px solid var(--border);
+            height: 60px;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Tabs */
+        .nav-tabs { border-bottom: 1px solid var(--border); }
+        .nav-link {
+            color: #888;
+            border: none; border-bottom: 2px solid transparent;
+            transition: 0.3s;
+        }
+        .nav-link:hover { color: var(--accent); }
+        .nav-link.active {
+            background: transparent !important;
+            color: var(--accent) !important;
+            border-bottom: 2px solid var(--accent);
+            font-weight: bold;
+        }
+
+        /* 主內容區 */
+        .tab-content { flex: 1; overflow: hidden; position: relative; }
+        .tab-pane { height: 100%; width: 100%; }
+
+        /* Tab 1: 教材區 (左右分割) */
+        .material-layout {
+            display: flex;
+            height: 100%;
+        }
+        .video-col {
+            flex: 1; 
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border);
+        }
+        .pdf-col {
+            flex: 1; 
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .pdf-viewer {
+            flex: 1;
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #222;
+        }
+
+        /* Tab 2: 擬題區 (左右分割) */
+        .posing-layout { display: flex; height: 100%; }
+        .input-workspace {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border);
+        }
+
+        /* 輸入框 Dark Mode */
+        .form-control {
+            background-color: #1a1a1a;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+        .form-control:focus {
+            background-color: #1a1a1a;
+            border-color: var(--accent);
+            color: var(--text);
+            box-shadow: none;
+        }
+
+        /* 右側 Chat Sidebar */
+        .chat-sidebar {
+            width: var(--chat-width);
+            background: var(--panel-bg);
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-body {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        /* 訊息泡泡 */
+        .msg { display: flex; max-width: 90%; }
+        .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+        .msg.ai { align-self: flex-start; }
+        .bubble {
+            padding: 12px 16px; border-radius: 12px;
+            font-size: 0.95rem; line-height: 1.6;
+        }
+        .bubble p { margin-bottom: 0; } /* 消除 Markdown 多餘空行 */
+        
+        .msg.ai .bubble { background: #1f1f1f; border: 1px solid var(--border); border-top-left-radius: 2px; }
+        .msg.user .bubble { background: var(--accent-dim); border: 1px solid var(--accent); border-top-right-radius: 2px; }
+        
+        /* 程式碼區塊 */
+        pre { background: #000; padding: 10px; border-radius: 5px; border: 1px solid #333; margin-top: 5px; overflow-x: auto;}
+        code { color: #ff79c6; font-family: 'Consolas', monospace; }
+
+        /* 底部輸入區 (Textarea 樣式) */
+        .chat-footer { padding: 15px; border-top: 1px solid var(--border); background: var(--panel-bg); }
+        .input-group-custom {
+            display: flex; align-items: flex-end; /* 對齊底部 */
+            background: #1a1a1a; border: 1px solid var(--border);
+            border-radius: 8px; padding: 5px;
+        }
+        .input-group-custom:focus-within { border-color: var(--accent); }
+        
+        .chat-input { 
+            flex: 1; 
+            background: transparent; 
+            border: none; 
+            color: var(--text); 
+            padding: 10px; 
+            outline: none; 
+            resize: none; 
+            height: 44px; 
+            max-height: 120px; 
+            overflow-y: auto;
+            line-height: 1.5;
+        }
+        
+        .btn-send { 
+            background: transparent; border: none; color: #888; 
+            padding: 0 15px; cursor: pointer; transition: 0.2s; 
+            height: 44px; 
+        }
+        .btn-send:hover { color: var(--accent); transform: scale(1.1); }
+
+        /* 鷹架 Chips */
+        .scaffold-chips { display: flex; gap: 10px; padding: 10px 15px; overflow-x: auto; border-top: 1px solid var(--border); }
+        .chip {
+            white-space: nowrap; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem;
+            border: 1px solid var(--border); background: #1a1a1a; color: #aaa;
+            cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 5px;
+        }
+        .chip:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* Loading */
+        .typing { display: none; gap: 5px; padding: 10px; margin-left: 10px; }
+        .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: bounce 1.4s infinite; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+    </style>
+</head>
+<body>
+
+    <nav class="navbar-custom">
+        <div class="d-flex align-items-center gap-3">
+            <i class="fas fa-microchip" style="color: var(--accent); font-size: 1.5rem;"></i>
+            <span style="font-size: 1.2rem; font-weight: bold; letter-spacing: 1px;">AI 引導式擬題系統</span>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <div style="font-size: 0.9rem; color: #aaa;">
+                <i class="fas fa-user-astronaut me-2"></i>學生：王小明
+            </div>
+        </div>
+    </nav>
+
+    <ul class="nav nav-tabs ps-3 pt-2">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#tab-material">
+                <i class="fas fa-book me-2"></i>教材學習
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#tab-posing">
+                <i class="fas fa-robot me-2"></i>擬題練習
+            </a>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        
+        <div class="tab-pane fade show active" id="tab-material">
+            <div class="material-layout">
+                <div class="video-col">
+                    <h4 class="mb-4" style="color: var(--accent);"><i class="fab fa-youtube me-2"></i>單元影片學習</h4>
+                    
+                    <div class="card bg-dark border-secondary mb-3">
+                        <div class="ratio ratio-16x9">
+                            <iframe src="https://www.youtube.com/embed/5sIwU7NlJZA" title="迴圈基本概念" allowfullscreen></iframe>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="text-white">1. 迴圈基本概念</h5>
+                            <p class="mb-0" style="color: var(--text-sub);">
+                                學習目標：認識為什麼需要使用迴圈，以及基本的運作邏輯。
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="card bg-dark border-secondary mb-3 opacity-50">
+                        <div class="ratio ratio-16x9 bg-black d-flex align-items-center justify-content-center">
+                             <iframe src="https://www.youtube.com/embed/sy7jplrAnyc" title="迴圈的種類" allowfullscreen style="pointer-events: none; opacity: 0.5;"></iframe>
+                             <div style="position: absolute; z-index: 10;">
+                                <i class="fas fa-lock fa-3x text-white"></i>
+                             </div>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="text-secondary">2. 迴圈的種類 (尚未解鎖)</h5>
+                            <p class="small mb-0" style="color: #666;">
+                                請先完成第一個單元的測驗後解鎖。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pdf-col">
+                    <h4 class="mb-3" style="color: var(--accent);"><i class="fas fa-file-pdf me-2"></i>講義閱讀區</h4>
+                    <iframe class="pdf-viewer" src="https://drive.google.com/file/d/1IHtDSuGB8LhAUeYx0jM-azkwEVpvIg09/preview"></iframe>
+                    <div class="mt-2 text-end">
+                        <a href="https://drive.google.com/file/d/1IHtDSuGB8LhAUeYx0jM-azkwEVpvIg09/view?usp=sharing" target="_blank" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-external-link-alt me-1"></i>另開視窗閱讀
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-posing">
+            <div class="posing-layout">
+                
+                <div class="input-workspace">
+                    <h5 class="mb-4" style="color: var(--accent);"><i class="fas fa-pen-nib me-2"></i>擬題工作區</h5>
+                    
+                    <div class="mb-4">
+                        <label class="form-label text-white fw-bold">1. 題目名稱</label>
+                        <input type="text" class="form-control" id="inputTitle" placeholder="在此輸入題目名稱...">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label text-white fw-bold">2. 題目敘述</label>
+                        <textarea class="form-control" id="inputDesc" rows="4" placeholder="在此描述問題情境..."></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label text-white fw-bold">3. 參考程式碼</label>
+                        <textarea class="form-control" id="inputCode" rows="10" 
+                            style="font-family: 'Consolas', monospace; background: #0d0d0d;" 
+                            placeholder="# 請在此貼上 Python 程式碼..."></textarea>
+                    </div>
+                </div>
+
+                <div class="chat-sidebar">
+                    <div class="chat-body" id="chatContainer">
+                        <div class="msg ai">
+                            <div class="bubble">
+                                <i class="fas fa-robot me-2" style="color: var(--accent);"></i>
+                                請在左側輸入擬題內容，我會根據你的輸入給予建議，有任何問題都歡迎隨時提問喔！
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="typing" id="typingIndicator">
+                        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                    </div>
+
+                    <div class="scaffold-chips">
+                        <div class="chip" onclick="askGAS('clue')">
+                            <i class="far fa-lightbulb"></i> 線索啟發
+                        </div>
+                        <div class="chip" onclick="askGAS('example')">
+                            <i class="fas fa-code"></i> 範例引導
+                        </div>
+                        <div class="chip" onclick="askGAS('reflect')">
+                            <i class="fas fa-search"></i> 反思提問
+                        </div>
+                    </div>
+
+                    <div class="chat-footer">
+                        <div class="input-group-custom">
+                            <textarea id="userChatInput" class="chat-input" rows="1" placeholder="輸入訊息... (Shift+Enter 換行)" onkeydown="handleEnter(event)"></textarea>
+                            
+                            <button class="btn-send" onclick="sendUserMessage()">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // ==========================================
+        //  TODO: 請將部署好的 GAS 網址貼在下方
+        // ==========================================
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwaY-RTajR4mHZPDl7Eext5IQXzg2etTYDQGDlPlb9R4Pc0APf1FQMvVewST6_z5jJO/exec"; 
+        
+        const chatContainer = document.getElementById('chatContainer');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const chatInput = document.getElementById('userChatInput');
+
+        // 處理按鍵輸入 (Enter 送出, Shift+Enter 換行)
+        function handleEnter(e) {
+            if (e.key === 'Enter') {
+                if (!e.shiftKey) {
+                    e.preventDefault(); // 防止預設換行
+                    sendUserMessage();
+                }
+            }
+        }
+
+        // 1. 發送一般對話
+        function sendUserMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            appendMessage('user', text);
+            chatInput.value = ''; // 清空輸入框
+            chatInput.style.height = '44px'; // 重置高度
+
+            callGasBackend(text, 'general');
+        }
+
+        // 2. 觸發鷹架功能
+        function askGAS(type) {
+            const title = document.getElementById('inputTitle').value;
+            const desc = document.getElementById('inputDesc').value;
+            const code = document.getElementById('inputCode').value;
+
+            let userDisplay = "";
+            if (type === 'clue') userDisplay = "請給我一些擬題線索。";
+            if (type === 'example') userDisplay = "請示範如何將語法融入情境。";
+            if (type === 'reflect') userDisplay = "請幫我檢查擬題邏輯。";
+
+            appendMessage('user', userDisplay);
+
+            const payload = {
+                type: type,
+                title: title,
+                desc: desc,
+                code: code
+            };
+
+            callGasBackend(JSON.stringify(payload), 'scaffold');
+        }
+
+        function callGasBackend(content, mode) {
+            
+            if (GAS_URL.includes("xxxx")) {
+                alert("請先修改 HTML 程式碼中的 GAS_URL 為您真實的網址！");
+                return;
+            }
+
+            typingIndicator.style.display = 'flex';
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            fetch(GAS_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ mode: mode, message: content })
+            })
+            .then(response => response.json())
+            .then(data => {
+                typingIndicator.style.display = 'none';
+                if (data.status === 'success') {
+                    appendMessage('ai', data.reply);
+                } else {
+                    appendMessage('ai', "⚠️ 系統錯誤: " + data.error);
+                }
+            })
+            .catch(error => {
+                typingIndicator.style.display = 'none';
+                appendMessage('ai', "⚠️ 連線失敗，請檢查網路或 GAS 部署設定。");
+            });
+        }
+
+        function appendMessage(role, text) {
+            const div = document.createElement('div');
+            div.className = `msg ${role}`;
+            
+            // 設定 marked 支援 GitHub 風格的換行 (breaks: true)
+            marked.setOptions({
+                breaks: true
+            });
+
+            const parsedHTML = marked.parse(text);
+
+            div.innerHTML = `
+                <div class="bubble">
+                    ${role === 'ai' ? '<i class="fas fa-robot me-2" style="color:var(--accent)"></i>' : ''}
+                    ${parsedHTML}
+                </div>
+            `;
+            chatContainer.appendChild(div);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    </script>
+</body>
+</html>
