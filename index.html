@@ -252,6 +252,9 @@
                                 <source src="https://media.video.cloud.edu.tw/medialib/00/05/EF/A0/segment_1.mp4" type="video/mp4">
                                 您的瀏覽器不支援影片播放。
                             </video>
+                            <audio id="audio1" style="display: none;">
+                                <source src="https://media.video.cloud.edu.tw/medialib/00/05/EF/A0/segment_6.mp4" type="audio/mp4">
+                            </audio>
                         </div>
                         <div class="card-body">
                             <h5 class="text-white">1. 認識 while 迴圈與流程圖</h5>
@@ -260,7 +263,6 @@
                             </p>
                         </div>
                     </div>
-
                     <div class="card bg-dark border-secondary mb-3">
                         <div class="video-container">
                             <div id="video2Overlay" class="locked-overlay">
@@ -368,19 +370,48 @@
         const typingIndicator = document.getElementById('typingIndicator');
         const chatInput = document.getElementById('userChatInput');
 
-        // ==== 影片解鎖邏輯 ====
+        // ==== 影片解鎖 與 影音同步 邏輯 ====
         const video1 = document.getElementById('video1');
+        const audio1 = document.getElementById('audio1'); // 新增：抓取聲音物件
         const video2Overlay = document.getElementById('video2Overlay');
         const video2Title = document.getElementById('video2Title');
         let isUnlocked = false;
 
         if(video1) {
+            // --- 1. 原有的解鎖功能 ---
             video1.addEventListener('timeupdate', function() {
                 // 如果尚未解鎖 且 播放時間超過 10 秒
                 if (!isUnlocked && video1.currentTime >= 10) {
                     unlockVideo2();
                 }
             });
+
+            // --- 2. 新增：影音同步功能 ---
+            if(audio1) {
+                // 播放同步
+                video1.addEventListener('play', () => audio1.play());
+                // 暫停同步
+                video1.addEventListener('pause', () => audio1.pause());
+                // 時間軸拖曳同步
+                video1.addEventListener('seeking', () => audio1.currentTime = video1.currentTime);
+                // 緩衝等待同步
+                video1.addEventListener('waiting', () => audio1.pause());
+                // 緩衝結束繼續播放同步 (含誤差校正)
+                video1.addEventListener('playing', () => {
+                    if (Math.abs(audio1.currentTime - video1.currentTime) > 0.3) {
+                        audio1.currentTime = video1.currentTime;
+                    }
+                    audio1.play();
+                });
+                // 音量與靜音同步
+                video1.addEventListener('volumechange', () => {
+                    if (video1.muted) {
+                        audio1.volume = 0;
+                    } else {
+                        audio1.volume = video1.volume;
+                    }
+                });
+            }
         }
 
         function unlockVideo2() {
