@@ -81,7 +81,7 @@
         .tab-content { flex: 1; overflow: hidden; position: relative; }
         .tab-pane { height: 100%; width: 100%; }
 
-        /* Tab 1: 教材區 (左右分割) */
+        /* Tab 1: 教材區 */
         .material-layout {
             display: flex;
             height: 100%;
@@ -106,7 +106,7 @@
             background: #222;
         }
 
-        /* Tab 2: 擬題區 (左右分割) */
+        /* Tab 2: 擬題區 */
         .posing-layout { display: flex; height: 100%; }
         .input-workspace {
             flex: 1;
@@ -152,7 +152,7 @@
             padding: 12px 16px; border-radius: 12px;
             font-size: 0.95rem; line-height: 1.6;
         }
-        .bubble p { margin-bottom: 0; } /* 消除 Markdown 多餘空行 */
+        .bubble p { margin-bottom: 0; }
         
         .msg.ai .bubble { background: #1f1f1f; border: 1px solid var(--border); border-top-left-radius: 2px; }
         .msg.user .bubble { background: var(--accent-dim); border: 1px solid var(--accent); border-top-right-radius: 2px; }
@@ -161,33 +161,23 @@
         pre { background: #000; padding: 10px; border-radius: 5px; border: 1px solid #333; margin-top: 5px; overflow-x: auto;}
         code { color: #ff79c6; font-family: 'Consolas', monospace; }
 
-        /* 底部輸入區 (Textarea 樣式) */
+        /* 底部輸入區 */
         .chat-footer { padding: 15px; border-top: 1px solid var(--border); background: var(--panel-bg); }
         .input-group-custom {
-            display: flex; align-items: flex-end; /* 對齊底部 */
+            display: flex; align-items: flex-end; 
             background: #1a1a1a; border: 1px solid var(--border);
             border-radius: 8px; padding: 5px;
         }
         .input-group-custom:focus-within { border-color: var(--accent); }
         
         .chat-input { 
-            flex: 1; 
-            background: transparent; 
-            border: none; 
-            color: var(--text); 
-            padding: 10px; 
-            outline: none; 
-            resize: none; 
-            height: 44px; 
-            max-height: 120px; 
-            overflow-y: auto;
-            line-height: 1.5;
+            flex: 1; background: transparent; border: none; color: var(--text); padding: 10px; 
+            outline: none; resize: none; height: 44px; max-height: 120px; overflow-y: auto; line-height: 1.5;
         }
         
         .btn-send { 
-            background: transparent; border: none; color: #888; 
-            padding: 0 15px; cursor: pointer; transition: 0.2s; 
-            height: 44px; 
+            background: transparent; border: none; color: #888; padding: 0 15px; 
+            cursor: pointer; transition: 0.2s; height: 44px; 
         }
         .btn-send:hover { color: var(--accent); transform: scale(1.1); }
 
@@ -206,6 +196,19 @@
         .dot:nth-child(2) { animation-delay: 0.2s; }
         .dot:nth-child(3) { animation-delay: 0.4s; }
         @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+        /* 影片解鎖遮罩樣式 */
+        .locked-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 10;
+            transition: opacity 0.5s ease;
+        }
+        .locked-overlay i { color: #888; font-size: 3rem; margin-bottom: 15px; }
+        .locked-overlay p { color: #aaa; font-size: 0.9rem; margin: 0; }
+        .video-container { position: relative; border-radius: 5px 5px 0 0; overflow: hidden; background: black; }
 
     </style>
 </head>
@@ -231,7 +234,7 @@
         </li>
         <li class="nav-item">
             <a class="nav-link" data-bs-toggle="tab" href="#tab-posing">
-                <i class="fas fa-robot me-2"></i>擬題練習
+                <i class="fas fa-robot me-2"></i>AI 擬題實作
             </a>
         </li>
     </ul>
@@ -244,28 +247,37 @@
                     <h4 class="mb-4" style="color: var(--accent);"><i class="fab fa-youtube me-2"></i>單元影片學習</h4>
                     
                     <div class="card bg-dark border-secondary mb-3">
-                        <div class="ratio ratio-16x9">
-                            <iframe src="https://www.youtube.com/embed/5sIwU7NlJZA" title="迴圈基本概念" allowfullscreen></iframe>
+                        <div style="background: black; border-radius: 5px 5px 0 0; overflow: hidden;">
+                            <video id="video1" controls playsinline width="100%" height="auto" style="display: block;">
+                                <source src="https://media.video.cloud.edu.tw/medialib/00/05/EF/A0/segment_1.mp4" type="video/mp4">
+                                您的瀏覽器不支援影片播放。
+                            </video>
                         </div>
                         <div class="card-body">
-                            <h5 class="text-white">1. 迴圈基本概念</h5>
+                            <h5 class="text-white">1. 認識 while 迴圈與流程圖</h5>
                             <p class="mb-0" style="color: var(--text-sub);">
-                                學習目標：認識為什麼需要使用迴圈，以及基本的運作邏輯。
+                                學習目標：認識 while 迴圈基本概念與流程圖繪製，觀看此影片 10 秒後即可解鎖下一單元。
                             </p>
                         </div>
                     </div>
 
-                    <div class="card bg-dark border-secondary mb-3 opacity-50">
-                        <div class="ratio ratio-16x9 bg-black d-flex align-items-center justify-content-center">
-                             <iframe src="https://www.youtube.com/embed/sy7jplrAnyc" title="迴圈的種類" allowfullscreen style="pointer-events: none; opacity: 0.5;"></iframe>
-                             <div style="position: absolute; z-index: 10;">
-                                <i class="fas fa-lock fa-3x text-white"></i>
-                             </div>
+                    <div class="card bg-dark border-secondary mb-3">
+                        <div class="video-container">
+                            <div id="video2Overlay" class="locked-overlay">
+                                <i class="fas fa-lock"></i>
+                                <p>請先觀看影片 1 至少 10 秒</p>
+                                <p>即可解鎖此單元</p>
+                            </div>
+
+                            <video controls playsinline width="100%" height="auto" style="display: block;">
+                                <source src="https://adl.edu.tw/data/video_data/18288-P-V-1-100-1-11-160-1.mp4" type="video/mp4">
+                                您的瀏覽器不支援影片播放。
+                            </video>
                         </div>
                         <div class="card-body">
-                            <h5 class="text-secondary">2. 迴圈的種類 (尚未解鎖)</h5>
-                            <p class="small mb-0" style="color: #666;">
-                                請先完成第一個單元的測驗後解鎖。
+                            <h5 class="text-white" id="video2Title" style="opacity: 0.5;">2. 巢狀 for 迴圈 (已鎖定)</h5>
+                            <p class="mb-0" style="color: var(--text-sub);">
+                                教材來源：因材網
                             </p>
                         </div>
                     </div>
@@ -285,7 +297,6 @@
 
         <div class="tab-pane fade" id="tab-posing">
             <div class="posing-layout">
-                
                 <div class="input-workspace">
                     <h5 class="mb-4" style="color: var(--accent);"><i class="fas fa-pen-nib me-2"></i>擬題工作區</h5>
                     
@@ -312,7 +323,7 @@
                         <div class="msg ai">
                             <div class="bubble">
                                 <i class="fas fa-robot me-2" style="color: var(--accent);"></i>
-                                請在左側輸入擬題內容，我會根據你的輸入給予建議，有任何問題都歡迎隨時提問喔！
+                                系統已連線。我是你的 AI 助教，請在左側輸入擬題內容，我會根據你的輸入給予建議。
                             </div>
                         </div>
                     </div>
@@ -336,7 +347,6 @@
                     <div class="chat-footer">
                         <div class="input-group-custom">
                             <textarea id="userChatInput" class="chat-input" rows="1" placeholder="輸入訊息... (Shift+Enter 換行)" onkeydown="handleEnter(event)"></textarea>
-                            
                             <button class="btn-send" onclick="sendUserMessage()">
                                 <i class="fas fa-paper-plane"></i>
                             </button>
@@ -358,29 +368,59 @@
         const typingIndicator = document.getElementById('typingIndicator');
         const chatInput = document.getElementById('userChatInput');
 
-        // 處理按鍵輸入 (Enter 送出, Shift+Enter 換行)
+        // ==== 影片解鎖邏輯 ====
+        const video1 = document.getElementById('video1');
+        const video2Overlay = document.getElementById('video2Overlay');
+        const video2Title = document.getElementById('video2Title');
+        let isUnlocked = false;
+
+        if(video1) {
+            video1.addEventListener('timeupdate', function() {
+                // 如果尚未解鎖 且 播放時間超過 10 秒
+                if (!isUnlocked && video1.currentTime >= 10) {
+                    unlockVideo2();
+                }
+            });
+        }
+
+        function unlockVideo2() {
+            isUnlocked = true;
+            
+            // 1. 遮罩淡出
+            video2Overlay.style.opacity = '0';
+            
+            // 2. 移除遮罩 (避免擋住點擊)
+            setTimeout(() => {
+                video2Overlay.style.display = 'none';
+            }, 500); // 等待淡出動畫結束
+
+            // 3. 更新標題樣式
+            video2Title.style.opacity = '1';
+            video2Title.innerHTML = '2. 巢狀 for 迴圈 <span class="badge bg-success ms-2">已解鎖</span>';
+            video2Title.classList.add('text-success'); // 變更顏色
+        }
+        // =====================
+
         function handleEnter(e) {
             if (e.key === 'Enter') {
                 if (!e.shiftKey) {
-                    e.preventDefault(); // 防止預設換行
+                    e.preventDefault();
                     sendUserMessage();
                 }
             }
         }
 
-        // 1. 發送一般對話
         function sendUserMessage() {
             const text = chatInput.value.trim();
             if (!text) return;
 
             appendMessage('user', text);
-            chatInput.value = ''; // 清空輸入框
-            chatInput.style.height = '44px'; // 重置高度
+            chatInput.value = ''; 
+            chatInput.style.height = '44px'; 
 
             callGasBackend(text, 'general');
         }
 
-        // 2. 觸發鷹架功能
         function askGAS(type) {
             const title = document.getElementById('inputTitle').value;
             const desc = document.getElementById('inputDesc').value;
@@ -437,11 +477,7 @@
             const div = document.createElement('div');
             div.className = `msg ${role}`;
             
-            // 設定 marked 支援 GitHub 風格的換行 (breaks: true)
-            marked.setOptions({
-                breaks: true
-            });
-
+            marked.setOptions({ breaks: true });
             const parsedHTML = marked.parse(text);
 
             div.innerHTML = `
